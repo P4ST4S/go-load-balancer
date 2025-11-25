@@ -12,7 +12,6 @@ FROM alpine:latest
 
 WORKDIR /root/
 
-# On copie uniuement le binaire compilé depuis l'étape 1
 COPY --from=builder /app/lb .
 
 EXPOSE 3030
