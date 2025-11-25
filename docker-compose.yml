@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  # Load Balancer
+  load-balancer:
+    build: .
+    ports:
+      - "3030:3030"
+      # This where you configure the load balancer to listen
+    command: ["-port=3030", "-backends=http://app1:80,http://app2:80,http://app3:80"]
+    depends_on:
+      - app1
+      - app2
+      - app3
+
+  # Backend 1 (Simulated)
+  app1:
+    image: traefik/whoami
+    container_name: app1
+
+  # Backend 2 (Simulated)
+  app2:
+    image: traefik/whoami
+    container_name: app2
+    
+  # Backend 3 (Simulated)
+  app3:
+    image: traefik/whoami
+    container_name: app3
