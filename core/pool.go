@@ -52,6 +52,7 @@ func (s *ServerPool) GetUpTimeInSeconds() uint64 {
 	return total
 }
 
+// GetUpTime returns the average uptime of all alive backends in a human-readable format
 func (s *ServerPool) GetUpTime() string {
 	var totalUpTime uint64
 	var aliveCount uint64
@@ -68,6 +69,7 @@ func (s *ServerPool) GetUpTime() string {
 	return formatSecondsToDuration(averageUpTime)
 }
 
+// GetStats returns the statistics of all backends
 func (s *ServerPool) GetStats() []BackendStats {
 	var stats []BackendStats
 	for _, b := range s.Backends {
