@@ -108,16 +108,26 @@ Output:
 
 ### 4. Demo: Least-Connections in action (slow backend simulation)
 
-To validate the Least-Connections behavior, the backend servers expose a `/sleep` endpoint that waits 5 seconds before replying. Run the stack and then execute the mixed load test which sends a mix of fast (`/`) and slow (`/sleep`) requests:
+To validate the Least-Connections behavior, the backend servers expose a `/sleep` endpoint that waits 5 seconds before replying.
+
+You can use the provided Python script to visualize the traffic distribution in real-time:
 
 ```bash
 # from project root
 docker-compose up --build
-chmod +x ./scripts/load_test_mix.sh
-./scripts/load_test_mix.sh 200 50
+python3 scripts/visual_test.py
 ```
 
-Observe the `/stats` endpoint while the test runs (`curl http://localhost:3030/stats | jq`). The load balancer should avoid routing new requests to backends currently handling slow requests.
+**Result Proof:**
+
+The output demonstrates that the Load Balancer favors backends with fewer active connections. In this example, `app2` is busy with slow requests (High Active Conns), so the LB routes the majority of new traffic to `app1` and `app3`.
+
+```text
+=== Load Balancer Distribution (Least Connections) ===
+Backend http://app1:80 [Active Conns: 0] | Fast Req: 125 | Slow Req: 8
+Backend http://app2:80 [Active Conns: 5] | Fast Req: 22  | Slow Req: 15  <-- Busy, receiving less traffic
+Backend http://app3:80 [Active Conns: 1] | Fast Req: 118 | Slow Req: 9
+```
 
 ## 🧠 Technical Highlights
 
