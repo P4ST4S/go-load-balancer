@@ -73,7 +73,10 @@ type HealthResponse struct {
 }
 
 func updateBackendStats(b *core.Backend) {
-	resp, err := http.Get(b.URL.String() + "/health")
+	client := &http.Client{
+		Timeout: 5 * time.Second,
+	}
+	resp, err := client.Get(b.URL.String() + "/health")
 	if err != nil {
 		log.Printf("Error fetching stats from %s: %s", b.URL, err)
 		return
