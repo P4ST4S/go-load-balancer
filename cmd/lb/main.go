@@ -89,6 +89,10 @@ func main() {
 		log.Fatal("Please provide one or more backends using -backends")
 	}
 
+	// Register handlers
+	http.HandleFunc("/", lbHandler)
+	http.HandleFunc("/stats", statsHandler)
+
 	// Parse servers
 	tokens := strings.Split(serverList, ",")
 	for _, tok := range tokens {
@@ -112,6 +116,7 @@ func main() {
 			URL:          serverUrl,
 			Alive:        true, // We assume they are alive at startup
 			ReverseProxy: proxy,
+			StartTime:    time.Now(),
 		})
 		log.Printf("Configured server: %s\n", serverUrl)
 	}
