@@ -118,7 +118,7 @@ docker-compose up --build
 python3 scripts/visual_test.py
 ```
 
-**Result Proof:**
+**Benchmark:**
 
 The output demonstrates that the Load Balancer favors backends with fewer active connections. In this example, `app2` is busy with slow requests (High Active Conns), so the LB routes the majority of new traffic to `app1` and `app3`.
 
@@ -151,11 +151,6 @@ To prevent goroutine leaks when fetching statistics from potentially slow backen
 - A fixed number of workers (3) consume update tasks from a buffered channel.
 - If the channel is full (backpressure), new updates are skipped until workers are available.
 - This ensures the main health check loop is never blocked by slow network calls.
-
-## 🔮 Future Improvements
-
-- [ ] Implement Weighted Round-Robin for servers with different capacities.
-- [ ] Add Least Connections algorithm.
 
 ---
 
