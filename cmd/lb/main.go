@@ -187,6 +187,11 @@ func main() {
 	server := http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
 		Handler: nil, // Use DefaultServeMux
+		// Timeouts to prevent Slow Loris attacks and resource leaks
+		ReadHeaderTimeout: 2 * time.Second,  // Fast fail for slow headers (Slow Loris)
+		ReadTimeout:       15 * time.Second, // Time to read the full request
+		WriteTimeout:      15 * time.Second, // Time to write the full response
+		IdleTimeout:       60 * time.Second, // Keep-alive connections
 	}
 
 	// Start health checking in a separate goroutine
