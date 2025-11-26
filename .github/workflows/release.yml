@@ -20,6 +20,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Run Unit Tests
+        run: |
+          go test -v -coverprofile=coverage.out ./core/... ./cmd/...
+          go tool cover -func=coverage.out
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
