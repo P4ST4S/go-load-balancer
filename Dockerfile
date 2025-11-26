@@ -6,7 +6,7 @@ COPY go.mod ./
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o lb cmd/lb/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o lb ./cmd/lb
 
 FROM alpine:latest
 

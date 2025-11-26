@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -46,6 +47,17 @@ var serverPool core.ServerPool
 // waiting 20s before checking again
 func healthCheck() {
 	t := time.NewTicker(20 * time.Second)
+
+	// Worker pool for stats updates
+	jobs := make(chan *core.Backend, len(serverPool.Backends))
+	for i := 0; i < 3; i++ { // 3 workers
+		go func() {
+			for b := range jobs {
+				updateBackendStats(b)
+			}
+		}()
+	}
+
 	for range t.C {
 		for _, b := range serverPool.Backends {
 			alive := isBackendAlive(b.URL)
@@ -59,8 +71,46 @@ func healthCheck() {
 
 				b.SetAlive(alive)
 			}
+
+			if alive {
+				// Non-blocking send to avoid blocking the health check loop
+				select {
+				case jobs <- b:
+				default:
+					log.Printf("Worker pool full, skipping stats update for %s", b.URL)
+				}
+			}
 		}
 	}
+}
+
+type HealthResponse struct {
+	MemoryUsage uint64 `json:"memory_usage"`
+}
+
+func updateBackendStats(b *core.Backend) {
+	client := &http.Client{
+		Timeout: 5 * time.Second,
+	}
+	resp, err := client.Get(b.URL.String() + "/health")
+	if err != nil {
+		log.Printf("Error fetching stats from %s: %s", b.URL, err)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("Error fetching stats from %s: status %d", b.URL, resp.StatusCode)
+		return
+	}
+
+	var health HealthResponse
+	if err := json.NewDecoder(resp.Body).Decode(&health); err != nil {
+		log.Printf("Error decoding stats from %s: %s", b.URL, err)
+		return
+	}
+
+	b.SetMemoryUsage(health.MemoryUsage)
 }
 
 // isBackendAlive checks whether a backend is alive by establishing a TCP connection
@@ -89,9 +139,15 @@ func main() {
 		log.Fatal("Please provide one or more backends using -backends")
 	}
 
+	// Register handlers
+	http.HandleFunc("/", lbHandler)
+	http.HandleFunc("/stats", statsHandler)
+	// The /stats endpoint is intentionally public in production environments.
+	// If you need to restrict access, add authentication here.
+
 	// Parse servers
-	tokens := strings.Split(serverList, ",")
-	for _, tok := range tokens {
+	tokens := strings.SplitSeq(serverList, ",")
+	for tok := range tokens {
 		serverUrl, err := url.Parse(tok)
 		if err != nil {
 			log.Fatal(err)
@@ -112,6 +168,7 @@ func main() {
 			URL:          serverUrl,
 			Alive:        true, // We assume they are alive at startup
 			ReverseProxy: proxy,
+			StartTime:    time.Now(),
 		})
 		log.Printf("Configured server: %s\n", serverUrl)
 	}
@@ -119,7 +176,7 @@ func main() {
 	// Create HTTP server
 	server := http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
-		Handler: http.HandlerFunc(lbHandler),
+		Handler: nil, // Use DefaultServeMux
 	}
 
 	// Start health checking in a separate goroutine

@@ -31,6 +31,7 @@ style LB fill:#d4edfc,stroke:#0052cc,stroke-width:2px
 - 🔒 **Thread-Safe Design**: Uses `sync.RWMutex` to manage concurrent reads/writes to the server pool status.
 - 🚀 **Atomic Operations**: Uses `sync/atomic` for the request counter to avoid locking bottlenecks in the hot path.
 - 🐳 **Docker Native**: Fully containerized with a Multi-Stage Build (Alpine based) for a lightweight production image.
+- 📊 **Real-time Stats**: Exposes a `/stats` endpoint providing live metrics (uptime, memory usage) for each backend.
 
 ## 🚀 Getting Started
 
@@ -84,6 +85,27 @@ Status change: http://app2:80 [down]
 
 Now, run `curl` again. You will notice that traffic is never routed to the stopped server.
 
+### 3. Check Statistics
+
+You can monitor the health and resource usage of your backends in real-time:
+
+```bash
+curl http://localhost:3030/stats | jq
+```
+
+Output:
+```json
+[
+  {
+    "url": "http://app1:80",
+    "alive": true,
+    "uptime": "00h:05m:23s",
+    "memory_usage": "1.2 MB"
+  },
+  ...
+]
+```
+
 ## 🧠 Technical Highlights
 
 ### Concurrency & Safety
@@ -99,11 +121,18 @@ For the Round-Robin index, I chose `atomic.AddUint64` instead of a standard Mute
 
 **Why?** Mutexes are expensive. In a high-load scenario (10k req/sec), locking the counter for every request creates a bottleneck. Atomic CPU instructions are non-blocking and significantly faster.
 
+### Worker Pool for Stats
+
+To prevent goroutine leaks when fetching statistics from potentially slow backends, I implemented a **Worker Pool** pattern.
+
+- A fixed number of workers (3) consume update tasks from a buffered channel.
+- If the channel is full (backpressure), new updates are skipped until workers are available.
+- This ensures the main health check loop is never blocked by slow network calls.
+
 ## 🔮 Future Improvements
 
 - [ ] Implement Weighted Round-Robin for servers with different capacities.
 - [ ] Add Least Connections algorithm.
-- [ ] Expose a `/stats` endpoint for monitoring (Prometheus metrics).
 
 ---
 

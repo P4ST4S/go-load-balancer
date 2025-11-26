@@ -13,17 +13,29 @@ services:
       - app2
       - app3
 
-  # Backend 1 (Simulated)
+  # Backend 1 (Custom Go Server)
   app1:
-    image: traefik/whoami
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
     container_name: app1
+    environment:
+      - PORT=80
 
-  # Backend 2 (Simulated)
+  # Backend 2 (Custom Go Server)
   app2:
-    image: traefik/whoami
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
     container_name: app2
+    environment:
+      - PORT=80
     
-  # Backend 3 (Simulated)
+  # Backend 3 (Custom Go Server)
   app3:
-    image: traefik/whoami
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
     container_name: app3
+    environment:
+      - PORT=80
