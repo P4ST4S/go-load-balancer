@@ -47,6 +47,17 @@ var serverPool core.ServerPool
 // waiting 20s before checking again
 func healthCheck() {
 	t := time.NewTicker(20 * time.Second)
+
+	// Worker pool for stats updates
+	jobs := make(chan *core.Backend, len(serverPool.Backends))
+	for i := 0; i < 3; i++ { // 3 workers
+		go func() {
+			for b := range jobs {
+				updateBackendStats(b)
+			}
+		}()
+	}
+
 	for range t.C {
 		for _, b := range serverPool.Backends {
 			alive := isBackendAlive(b.URL)
@@ -62,7 +73,12 @@ func healthCheck() {
 			}
 
 			if alive {
-				go updateBackendStats(b)
+				// Non-blocking send to avoid blocking the health check loop
+				select {
+				case jobs <- b:
+				default:
+					log.Printf("Worker pool full, skipping stats update for %s", b.URL)
+				}
 			}
 		}
 	}
