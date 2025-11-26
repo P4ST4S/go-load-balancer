@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -47,40 +48,50 @@ func lbHandler(w http.ResponseWriter, r *http.Request) {
 var serverPool core.ServerPool
 
 // healthCheck pings the backends and updates their status
-// waiting 20s before checking again
-func healthCheck() {
-	t := time.NewTicker(20 * time.Second)
+func healthCheck(ctx context.Context, interval time.Duration) {
+	t := time.NewTicker(interval)
+	defer t.Stop()
 
 	// Worker pool for stats updates
 	jobs := make(chan *core.Backend, len(serverPool.Backends))
 	for i := 0; i < 3; i++ { // 3 workers
 		go func() {
-			for b := range jobs {
-				updateBackendStats(b)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case b := <-jobs:
+					updateBackendStatsFunc(b)
+				}
 			}
 		}()
 	}
 
-	for range t.C {
-		for _, b := range serverPool.Backends {
-			alive := isBackendAlive(b.URL)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			for _, b := range serverPool.Backends {
+				alive := isBackendAlive(b.URL)
 
-			if b.IsAlive() != alive {
-				status := "up"
-				if !alive {
-					status = "down"
+				if b.IsAlive() != alive {
+					status := "up"
+					if !alive {
+						status = "down"
+					}
+					log.Printf("Status change: %s [%s]", b.URL, status)
+
+					b.SetAlive(alive)
 				}
-				log.Printf("Status change: %s [%s]", b.URL, status)
 
-				b.SetAlive(alive)
-			}
-
-			if alive {
-				// Non-blocking send to avoid blocking the health check loop
-				select {
-				case jobs <- b:
-				default:
-					log.Printf("Worker pool full, skipping stats update for %s", b.URL)
+				if alive {
+					// Non-blocking send to avoid blocking the health check loop
+					select {
+					case jobs <- b:
+					default:
+						log.Printf("Worker pool full, skipping stats update for %s", b.URL)
+					}
 				}
 			}
 		}
@@ -90,6 +101,8 @@ func healthCheck() {
 type HealthResponse struct {
 	MemoryUsage uint64 `json:"memory_usage"`
 }
+
+var updateBackendStatsFunc = updateBackendStats
 
 func updateBackendStats(b *core.Backend) {
 	client := &http.Client{
@@ -139,8 +152,6 @@ func main() {
 	var serverList string
 	var port int
 
-	// Pass the server list as an argument for easy testing
-	// e.g.: -backends=http://localhost:8081,http://localhost:8082
 	flag.StringVar(&serverList, "backends", "", "Load balanced backends, use commas to separate")
 	flag.IntVar(&port, "port", 3030, "Port to serve")
 	flag.Parse()
@@ -149,56 +160,60 @@ func main() {
 		log.Fatal("Please provide one or more backends using -backends")
 	}
 
-	// Register handlers
-	http.HandleFunc("/", lbHandler)
-	http.HandleFunc("/stats", statsHandler)
-	// The /stats endpoint is intentionally public in production environments.
-	// If you need to restrict access, add authentication here.
+	server, err := setupServer(serverList, port)
+	if err != nil {
+		log.Fatal(err)
+	}
 
+	// Start health checking in a separate goroutine
+	go healthCheck(context.Background(), 20*time.Second)
+
+	log.Printf("Load Balancer started at :%d\n", port)
+	if err := server.ListenAndServe(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func setupServer(serverList string, port int) (*http.Server, error) {
 	// Parse servers
 	tokens := strings.SplitSeq(serverList, ",")
 	for tok := range tokens {
 		serverUrl, err := url.Parse(tok)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 
 		// Create the Proxy
 		proxy := httputil.NewSingleHostReverseProxy(serverUrl)
 
-		// Customize the proxy (Optional but recommended for Senior level)
 		proxy.ErrorHandler = func(writer http.ResponseWriter, request *http.Request, e error) {
 			log.Printf("[%s] %s\n", serverUrl.Host, e.Error())
-			// Here we could add retry logic
-			// Or mark the backend as dead immediately
 		}
 
 		// Add to pool
 		serverPool.AddBackend(&core.Backend{
 			URL:          serverUrl,
-			Alive:        true, // We assume they are alive at startup
+			Alive:        true,
 			ReverseProxy: proxy,
 			StartTime:    time.Now(),
 		})
 		log.Printf("Configured server: %s\n", serverUrl)
 	}
 
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", lbHandler)
+	mux.HandleFunc("/stats", statsHandler)
+
 	// Create HTTP server
-	server := http.Server{
+	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
-		Handler: nil, // Use DefaultServeMux
+		Handler: mux,
 		// Timeouts to prevent Slow Loris attacks and resource leaks
-		ReadHeaderTimeout: 2 * time.Second,  // Fast fail for slow headers (Slow Loris)
-		ReadTimeout:       15 * time.Second, // Time to read the full request
-		WriteTimeout:      15 * time.Second, // Time to write the full response
-		IdleTimeout:       60 * time.Second, // Keep-alive connections
+		ReadHeaderTimeout: 2 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
 
-	// Start health checking in a separate goroutine
-	go healthCheck()
-
-	log.Printf("Load Balancer started at :%d\n", port)
-	if err := server.ListenAndServe(); err != nil {
-		log.Fatal(err)
-	}
+	return server, nil
 }

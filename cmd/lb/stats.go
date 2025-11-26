@@ -8,13 +8,16 @@ import (
 // statsHandler returns the current status of the server pool
 func statsHandler(w http.ResponseWriter, r *http.Request) {
 	stats := serverPool.GetStats()
+	writeJSON(w, stats)
+}
 
-	data, err := json.Marshal(stats)
+func writeJSON(w http.ResponseWriter, data interface{}) {
+	js, err := json.Marshal(data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(data)
+	w.Write(js)
 }

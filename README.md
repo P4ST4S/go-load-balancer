@@ -1,5 +1,8 @@
 # High-Performance Go Load Balancer
 
+![Coverage](https://img.shields.io/badge/coverage-91%25-green)
+![Go Version](https://img.shields.io/badge/Go-1.22+-blue)
+
 A robust, concurrent Load Balancer written in Go, designed to distribute traffic across multiple backend services using the Least-Connections algorithm (aware of backend load). This project demonstrates advanced Go concepts such as Goroutines, Atomic Operations, Mutexes for thread safety, and System Architecture.
 
 ## 🏗 Architecture
@@ -151,6 +154,21 @@ To prevent goroutine leaks when fetching statistics from potentially slow backen
 - A fixed number of workers (3) consume update tasks from a buffered channel.
 - If the channel is full (backpressure), new updates are skipped until workers are available.
 - This ensures the main health check loop is never blocked by slow network calls.
+
+## ✅ Unit Testing
+
+The project includes a comprehensive suite of unit tests covering both the core logic and the HTTP handlers, ensuring reliability and thread safety.
+
+To run the tests:
+
+```bash
+go test -v ./...
+```
+
+**Coverage Highlights:**
+- **Core Logic**: Validates atomic operations, concurrency safety (Race Detector), and the Least-Connections algorithm.
+- **HTTP Handlers**: Mocks backend servers to verify routing, error handling (503), and health checks.
+- **Robustness**: Tests edge cases like network errors, JSON parsing failures, and worker pool backpressure.
 
 ---
 
