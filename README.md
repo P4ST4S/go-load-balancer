@@ -121,6 +121,14 @@ For the Round-Robin index, I chose `atomic.AddUint64` instead of a standard Mute
 
 **Why?** Mutexes are expensive. In a high-load scenario (10k req/sec), locking the counter for every request creates a bottleneck. Atomic CPU instructions are non-blocking and significantly faster.
 
+### Worker Pool for Stats
+
+To prevent goroutine leaks when fetching statistics from potentially slow backends, I implemented a **Worker Pool** pattern.
+
+- A fixed number of workers (3) consume update tasks from a buffered channel.
+- If the channel is full (backpressure), new updates are skipped until workers are available.
+- This ensures the main health check loop is never blocked by slow network calls.
+
 ## 🔮 Future Improvements
 
 - [ ] Implement Weighted Round-Robin for servers with different capacities.
