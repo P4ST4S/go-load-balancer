@@ -69,6 +69,10 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
           body: |
+            ## 🚀 Initial Release v1.0.0
+
+            First stable release of the High-Performance Go Load Balancer.
+
             ## Docker Images
             
             ```bash
@@ -76,12 +80,14 @@ jobs:
             docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
             ```
 
-            ## What's Changed
+            ## ✨ Key Features
             
-            - **Round-Robin Load Balancing**: Atomic, lock-free distribution.
-            - **Active Health Checks**: Automatic removal of dead backends.
-            - **Thread-Safe Architecture**: Robust concurrency handling with Mutexes.
-            - **Docker Native**: Multi-stage build (Alpine based).
+            - **Least-Connections Algorithm**: Smart traffic distribution based on backend load.
+            - **Active Health Checks**: Automatic detection and removal of unhealthy backends.
+            - **Thread-Safe Architecture**: Robust concurrency handling with `sync.RWMutex`.
+            - **Atomic Operations**: Lock-free counters for high-performance routing.
+            - **Real-time Statistics**: JSON endpoint `/stats` for monitoring.
+            - **Docker Native**: Lightweight Alpine-based production image.
 
             **Full Changelog**: https://github.com/${{ github.repository }}/commits/${{ github.ref_name }}
           draft: false
