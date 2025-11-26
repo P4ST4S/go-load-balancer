@@ -1,7 +1,7 @@
 # High-Performance Go Load Balancer
 
 ![Coverage](https://img.shields.io/badge/coverage-91%25-green)
-![Go Version](https://img.shields.io/badge/Go-1.22+-blue)
+![Go Version](https://img.shields.io/badge/Go-1.25.4-blue)
 
 A robust, concurrent Load Balancer written in Go, designed to distribute traffic across multiple backend services using the Least-Connections algorithm (aware of backend load). This project demonstrates advanced Go concepts such as Goroutines, Atomic Operations, Mutexes for thread safety, and System Architecture.
 
