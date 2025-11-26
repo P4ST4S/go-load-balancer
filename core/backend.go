@@ -114,4 +114,5 @@ type BackendStats struct {
 	Alive       bool   `json:"alive"`
 	UpTime      string `json:"uptime"`
 	MemoryUsage string `json:"memory_usage"`
+	ConnCount   uint64 `json:"conn_count"`
 }

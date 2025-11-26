@@ -106,6 +106,19 @@ Output:
 ]
 ```
 
+### 4. Demo: Least-Connections in action (slow backend simulation)
+
+To validate the Least-Connections behavior, the backend servers expose a `/sleep` endpoint that waits 5 seconds before replying. Run the stack and then execute the mixed load test which sends a mix of fast (`/`) and slow (`/sleep`) requests:
+
+```bash
+# from project root
+docker-compose up --build
+chmod +x ./scripts/load_test_mix.sh
+./scripts/load_test_mix.sh 200 50
+```
+
+Observe the `/stats` endpoint while the test runs (`curl http://localhost:3030/stats | jq`). The load balancer should avoid routing new requests to backends currently handling slow requests.
+
 ## 🧠 Technical Highlights
 
 ### Concurrency & Safety

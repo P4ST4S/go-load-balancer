@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"time"
 )
 
 type HealthResponse struct {
@@ -33,6 +34,12 @@ func main() {
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(resp)
+	})
+
+	// /sleep simulates a slow request (5s) to help testing Least-Connections behavior
+	http.HandleFunc("/sleep", func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(5 * time.Second)
+		fmt.Fprintf(w, "Slept 5 seconds on %s\n", os.Getenv("HOSTNAME"))
 	})
 
 	log.Printf("Backend server starting on port %s...", port)

@@ -96,6 +96,7 @@ func (s *ServerPool) GetStats() []BackendStats {
 			Alive:       b.IsAlive(),
 			UpTime:      b.GetUpTime(),
 			MemoryUsage: b.GetMemoryUsageString(),
+			ConnCount:   b.GetConnCount(),
 		})
 	}
 	return stats
