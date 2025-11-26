@@ -5,6 +5,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -17,6 +18,9 @@ type Backend struct {
 	ReverseProxy *httputil.ReverseProxy
 	StartTime    time.Time
 	MemoryUsage  uint64
+	// ConnCount is the number of active requests currently being handled by this backend.
+	// Updated atomically to avoid locking in the hot path.
+	ConnCount uint64
 }
 
 // SetAlive is a thread-safe way to set the alive status of the backend
@@ -54,6 +58,30 @@ func (b *Backend) GetUpTimeInSeconds() uint64 {
 	return uint64(time.Since(b.StartTime).Seconds())
 }
 
+// IncConn increments the active connection counter for this backend.
+func (b *Backend) IncConn() {
+	atomic.AddUint64(&b.ConnCount, 1)
+}
+
+// DecConn decrements the active connection counter for this backend.
+// It ensures we don't underflow the counter.
+func (b *Backend) DecConn() {
+	for {
+		old := atomic.LoadUint64(&b.ConnCount)
+		if old == 0 {
+			return
+		}
+		if atomic.CompareAndSwapUint64(&b.ConnCount, old, old-1) {
+			return
+		}
+	}
+}
+
+// GetConnCount returns the current active connection count.
+func (b *Backend) GetConnCount() uint64 {
+	return atomic.LoadUint64(&b.ConnCount)
+}
+
 // SetMemoryUsage sets the memory usage of the backend
 func (b *Backend) SetMemoryUsage(mem uint64) {
 	b.Mux.Lock()
@@ -86,4 +114,5 @@ type BackendStats struct {
 	Alive       bool   `json:"alive"`
 	UpTime      string `json:"uptime"`
 	MemoryUsage string `json:"memory_usage"`
+	ConnCount   uint64 `json:"conn_count"`
 }
