@@ -16,9 +16,9 @@ subgraph "Server Pool (Round Robin)"
     LB -.->|❌ Detected Down| App3[Backend 3]
 end
 
-HC[Health Checker Worker] -.->|TCP Dial every 5s| App1
-HC -.->|TCP Dial every 5s| App2
-HC -.->|TCP Dial every 5s| App3
+HC[Health Checker Worker] -.->|HTTP GET every 20s| App1
+HC -.->|HTTP GET every 20s| App2
+HC -.->|HTTP GET every 20s| App3
 
 style App3 fill:#ffcccc,stroke:#ff0000
 style LB fill:#d4edfc,stroke:#0052cc,stroke-width:2px
@@ -27,7 +27,7 @@ style LB fill:#d4edfc,stroke:#0052cc,stroke-width:2px
 ## ✨ Key Features
 
 - ⚡ **Round-Robin Selection**: Traffic is distributed cyclically across available servers.
-- 🛡️ **Active Health Checks**: A background worker (Goroutine) pings backends periodically via TCP. If a server fails, it is automatically removed from the rotation.
+- 🛡️ **Active Health Checks**: A background worker (Goroutine) pings backends periodically via HTTP. If a server fails (non-2xx status), it is automatically removed from the rotation.
 - 🔒 **Thread-Safe Design**: Uses `sync.RWMutex` to manage concurrent reads/writes to the server pool status.
 - 🚀 **Atomic Operations**: Uses `sync/atomic` for the request counter to avoid locking bottlenecks in the hot path.
 - 🐳 **Docker Native**: Fully containerized with a Multi-Stage Build (Alpine based) for a lightweight production image.

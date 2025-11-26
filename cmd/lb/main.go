@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -116,13 +115,20 @@ func updateBackendStats(b *core.Backend) {
 // isBackendAlive checks whether a backend is alive by establishing a TCP connection
 func isBackendAlive(u *url.URL) bool {
 	timeout := 2 * time.Second
-	conn, err := net.DialTimeout("tcp", u.Host, timeout)
+	client := http.Client{
+		Timeout: timeout,
+	}
+	resp, err := client.Get(u.String())
 	if err != nil {
 		log.Println("Site unreachable, error: ", err)
 		return false
 	}
-	_ = conn.Close() // Close immediately, we just wanted to test
-	return true
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 200 && resp.StatusCode < 400 {
+		return true
+	}
+	return false
 }
 
 func main() {
