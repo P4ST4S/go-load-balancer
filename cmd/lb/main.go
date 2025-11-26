@@ -27,11 +27,15 @@ func lbHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 1. Get a live backend via your method
-	peer := serverPool.GetNextPeer()
+	// 1. Get the backend with the least active connections
+	peer := serverPool.GetLeastConnPeer()
 
 	if peer != nil {
-		// 2. If we found a server, forward the request
+		// 2. Increment connection counter, ensure decrement after response
+		peer.IncConn()
+		defer peer.DecConn()
+
+		// Forward the request
 		peer.ReverseProxy.ServeHTTP(w, r)
 		return
 	}

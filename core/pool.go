@@ -29,6 +29,24 @@ func (s *ServerPool) GetNextPeer() *Backend {
 	return nil
 }
 
+// GetLeastConnPeer returns the alive backend with the least number of active connections.
+// If multiple backends have the same connection count, the first encountered is returned.
+func (s *ServerPool) GetLeastConnPeer() *Backend {
+	var best *Backend
+	var min uint64 = ^uint64(0) // max
+	for _, b := range s.Backends {
+		if !b.IsAlive() {
+			continue
+		}
+		c := b.GetConnCount()
+		if best == nil || c < min {
+			best = b
+			min = c
+		}
+	}
+	return best
+}
+
 func (s *ServerPool) AddBackend(b *Backend) {
 	s.Backends = append(s.Backends, b)
 }

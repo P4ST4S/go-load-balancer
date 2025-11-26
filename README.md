@@ -1,6 +1,6 @@
 # High-Performance Go Load Balancer
 
-A robust, concurrent Load Balancer written in Go, designed to distribute traffic across multiple backend services using the Round-Robin algorithm. This project demonstrates advanced Go concepts such as Goroutines, Atomic Operations, Mutexes for thread safety, and System Architecture.
+A robust, concurrent Load Balancer written in Go, designed to distribute traffic across multiple backend services using the Least-Connections algorithm (aware of backend load). This project demonstrates advanced Go concepts such as Goroutines, Atomic Operations, Mutexes for thread safety, and System Architecture.
 
 ## 🏗 Architecture
 
@@ -10,7 +10,7 @@ The system sits in front of a pool of backend servers. It performs active health
 graph TD
 Client(Client Requests) -->|HTTP| LB[Go Load Balancer :3030]
 
-subgraph "Server Pool (Round Robin)"
+subgraph "Server Pool (Least Connections)"
     LB -->|Route| App1[Backend 1]
     LB -->|Route| App2[Backend 2]
     LB -.->|❌ Detected Down| App3[Backend 3]
@@ -26,7 +26,7 @@ style LB fill:#d4edfc,stroke:#0052cc,stroke-width:2px
 
 ## ✨ Key Features
 
-- ⚡ **Round-Robin Selection**: Traffic is distributed cyclically across available servers.
+- ⚡ **Least-Connections Selection**: Traffic is routed to the backend with the fewest active connections (reduces latency imbalance).
 - 🛡️ **Active Health Checks**: A background worker (Goroutine) pings backends periodically via HTTP. If a server fails (non-2xx status), it is automatically removed from the rotation.
 - 🔒 **Thread-Safe Design**: Uses `sync.RWMutex` to manage concurrent reads/writes to the server pool status.
 - 🚀 **Atomic Operations**: Uses `sync/atomic` for the request counter to avoid locking bottlenecks in the hot path.
