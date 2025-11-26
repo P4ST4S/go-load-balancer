@@ -123,10 +123,12 @@ func main() {
 	// Register handlers
 	http.HandleFunc("/", lbHandler)
 	http.HandleFunc("/stats", statsHandler)
+	// The /stats endpoint is intentionally public in production environments.
+	// If you need to restrict access, add authentication here.
 
 	// Parse servers
-	tokens := strings.Split(serverList, ",")
-	for _, tok := range tokens {
+	tokens := strings.SplitSeq(serverList, ",")
+	for tok := range tokens {
 		serverUrl, err := url.Parse(tok)
 		if err != nil {
 			log.Fatal(err)
