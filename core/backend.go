@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"net/http/httputil"
 	"net/url"
 	"sync"
@@ -15,6 +16,7 @@ type Backend struct {
 	Mux          sync.RWMutex
 	ReverseProxy *httputil.ReverseProxy
 	StartTime    time.Time
+	MemoryUsage  uint64
 }
 
 // SetAlive is a thread-safe way to set the alive status of the backend
@@ -52,9 +54,36 @@ func (b *Backend) GetUpTimeInSeconds() uint64 {
 	return uint64(time.Since(b.StartTime).Seconds())
 }
 
+// SetMemoryUsage sets the memory usage of the backend
+func (b *Backend) SetMemoryUsage(mem uint64) {
+	b.Mux.Lock()
+	defer b.Mux.Unlock()
+	b.MemoryUsage = mem
+}
+
+// GetMemoryUsage returns the current memory usage
+func (b *Backend) GetMemoryUsage() uint64 {
+	b.Mux.RLock()
+	defer b.Mux.RUnlock()
+	return b.MemoryUsage
+}
+
+// GetMemoryUsageString returns the memory usage in a human-readable format
+func (b *Backend) GetMemoryUsageString() string {
+	mem := b.GetMemoryUsage()
+	if mem < 1024 {
+		return fmt.Sprintf("%d B", mem)
+	} else if mem < 1024*1024 {
+		return fmt.Sprintf("%.2f KB", float64(mem)/1024)
+	} else {
+		return fmt.Sprintf("%.2f MB", float64(mem)/(1024*1024))
+	}
+}
+
 // BackendStats represents the statistics of a backend server
 type BackendStats struct {
-	URL    string `json:"url"`
-	Alive  bool   `json:"alive"`
-	UpTime string `json:"uptime"`
+	URL         string `json:"url"`
+	Alive       bool   `json:"alive"`
+	UpTime      string `json:"uptime"`
+	MemoryUsage string `json:"memory_usage"`
 }

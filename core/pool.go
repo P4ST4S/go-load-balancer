@@ -72,9 +72,10 @@ func (s *ServerPool) GetStats() []BackendStats {
 	var stats []BackendStats
 	for _, b := range s.Backends {
 		stats = append(stats, BackendStats{
-			URL:    b.URL.String(),
-			Alive:  b.IsAlive(),
-			UpTime: b.GetUpTime(),
+			URL:         b.URL.String(),
+			Alive:       b.IsAlive(),
+			UpTime:      b.GetUpTime(),
+			MemoryUsage: b.GetMemoryUsageString(),
 		})
 	}
 	return stats
