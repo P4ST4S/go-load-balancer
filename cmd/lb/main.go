@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -59,8 +60,38 @@ func healthCheck() {
 
 				b.SetAlive(alive)
 			}
+
+			if alive {
+				go updateBackendStats(b)
+			}
 		}
 	}
+}
+
+type HealthResponse struct {
+	MemoryUsage uint64 `json:"memory_usage"`
+}
+
+func updateBackendStats(b *core.Backend) {
+	resp, err := http.Get(b.URL.String() + "/health")
+	if err != nil {
+		log.Printf("Error fetching stats from %s: %s", b.URL, err)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("Error fetching stats from %s: status %d", b.URL, resp.StatusCode)
+		return
+	}
+
+	var health HealthResponse
+	if err := json.NewDecoder(resp.Body).Decode(&health); err != nil {
+		log.Printf("Error decoding stats from %s: %s", b.URL, err)
+		return
+	}
+
+	b.SetMemoryUsage(health.MemoryUsage)
 }
 
 // isBackendAlive checks whether a backend is alive by establishing a TCP connection
@@ -124,7 +155,7 @@ func main() {
 	// Create HTTP server
 	server := http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
-		Handler: http.HandlerFunc(lbHandler),
+		Handler: nil, // Use DefaultServeMux
 	}
 
 	// Start health checking in a separate goroutine
